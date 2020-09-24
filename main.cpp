@@ -266,24 +266,24 @@ void mouseCB(int button, int state, int x, int y) {
 }
 
 void mouseMotionCB(int x, int y) {
-//    if (mouseState.mouseLeftDown) {
-//        mouseState.mouseangle_x += (x - mouseState.mousepos_x);
-//        mouseState.mouseangle_y += (y - mouseState.mousepos_y);
-//        mouseState.mousepos_x = x;
-//        mouseState.mousepos_y = y;
-//    }
-//    if (mouseState.mouseRightDown) {
+    if (mouseState.mouseLeftDown) {
+        mouseState.mouseangle_x += (x - mouseState.mousepos_x);
+        mouseState.mouseangle_y += (y - mouseState.mousepos_y);
+        mouseState.mousepos_x = x;
+        mouseState.mousepos_y = y;
+    }
+    if (mouseState.mouseRightDown) {
 //        boundingbox.pos_y_offset += (y - mouseState.mousepos_y) * 0.03f;
 //        boundingbox.pos_x_offset += (x - mouseState.mousepos_x) * 0.03f;
-//        mouseState.mousepos_y = y;
-//        mouseState.mousepos_x = x;
-//    }
-//    if (mouseState.mouseWheelUp) {
-//        mouseState.mouse_wheel_value += 0.008f;
-//    }
-//    if (mouseState.mouseWheelDown) {
-//        mouseState.mouse_wheel_value -= 0.008f;
-//    }
+        mouseState.mousepos_y = y;
+        mouseState.mousepos_x = x;
+    }
+    if (mouseState.mouseWheelUp) {
+        mouseState.mouse_wheel_value += 0.008f;
+    }
+    if (mouseState.mouseWheelDown) {
+        mouseState.mouse_wheel_value -= 0.008f;
+    }
     glutPostRedisplay();
 }
 
@@ -484,21 +484,16 @@ void renderScene(void) {
         glBegin(GL_LINES);
         glLineWidth(3.0);
         glColor3f(1.0, 1.0, 0.0);
-//        glVertex3f(camera.cameraPos_x, camera.cameraPos_y, camera.cameraPos_z-1.f);
         glVertex3f(camera.cameraPos_x, camera.cameraPos_y, camera.cameraPos_z);
-        glVertex3f(ray(0)+camera.cameraPos_x, ray(1)+camera.cameraPos_y, ray(2)+camera.cameraPos_z);
-//        glVertex3f(ray(0), ray(1), ray(2));
+        glVertex3f(ray(0), ray(1), ray(2));
         glEnd();
 
         glPointSize(3.0);
         glBegin(GL_POINTS);
         glColor3f(0, 1.0, 0);
-//        glVertex3f(camera.cameraPos_x, camera.cameraPos_y, camera.cameraPos_z-1.f);
         glVertex3f(camera.cameraPos_x, camera.cameraPos_y, camera.cameraPos_z);
-//        glVertex3f(camera.cameraPos_x, camera.cameraPos_y, camera.cameraPos_z);
         glColor3f(1.0, 0, 0);
-        glVertex3f(ray(0)+camera.cameraPos_x, ray(1)+camera.cameraPos_y, ray(2)+camera.cameraPos_z);
-//        glVertex3f(ray(0), ray(1), ray(2));
+        glVertex3f(ray(0), ray(1), ray(2));
         glEnd();
 
         Ray ray_forIntersection;
