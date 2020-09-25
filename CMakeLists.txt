@@ -27,5 +27,11 @@ endif(NOT OPENGL_FOUND)
 #########################################################
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
-add_executable(testOpenGL main.cpp)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+set (FILES
+        include/Struct.h
+        src/Struct.cpp)
+
+add_executable(testOpenGL main.cpp ${FILES} )
+
 target_link_libraries(testOpenGL ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${EIGEN3_LIBS})
