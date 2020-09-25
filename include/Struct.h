@@ -23,24 +23,46 @@ private:
     Eigen::Vector3d m_v3;
 };
 
+class Scene {
+public:
+    int GetSceneWidth();
+    int GetSceneHeight();
+    bool isChangingPlane;
+    Scene(int width, int height) {
+        m_width = width;
+        m_height = height;
+        isChangingPlane = false;
+    }
+
+private:
+    int m_width;
+    int m_height;
+};
+
 class Object {
 public:
     Object() {
         minCornerPoint = Eigen::Vector3d::Zero();
         maxCornerPoint = Eigen::Vector3d::Zero();
+        changePlaneOffset = 0.0;
     }
     void MoveObject(float offset, int axies);
     void SetVertexList(float vertex_list[8][3]);
     void SetIndexList(GLint index_list[12][2]);
     void SetAllTriangles();
+    void SetChangePlaneOffset(float offset_x);
+    float GetChangePlaneOffset();
+    void ChangePlane(size_t planeNumber, float offset);
     std::vector<Triangle> GetAllTriangles();
     float m_vertex_list[8][3];
     GLint m_index_list[12][2];
     std::map<int, std::vector<int>> triangle_plane;
+    int minTriangleIndex = -1;
 
 private:
     Eigen::Vector3d minCornerPoint;
     Eigen::Vector3d maxCornerPoint;
+    float changePlaneOffset;
 
     Triangle t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
     std::vector<Triangle> triangles;
@@ -49,19 +71,40 @@ private:
 class Camera {
 public:
     void SetCameraParams(
-        float pos_x, float pos_y, float pos_z, float center_x, float center_y,
-        float center_z, float up_x, float up_y, float up_z);
+        float pos_x, float pos_y, float pos_z, float front_x, float front_y,
+        float front_z, float up_x, float up_y, float up_z);
     Eigen::Vector3d GetCamPos();
-    Eigen::Vector3d GetCamCenter();
+    void SetCamPos(float x, float y, float z);
+    Eigen::Vector3d GetCamFront();
+    void SetCamFront(float x, float y, float z);
     Eigen::Vector3d GetCamUp();
+
+    Camera(
+        float pos_x, float pos_y, float pos_z, float front_x, float front_y,
+        float front_z, float up_x, float up_y, float up_z) {
+        cameraPos_x = pos_x;
+        cameraPos_y = pos_y;
+        cameraPos_z = pos_z;
+        cameraFront_x = front_x;
+        cameraFront_y = front_y;
+        cameraFront_z = front_z;
+        cameraUp_x = up_x;
+        cameraUp_y = up_y;
+        cameraUp_z = up_z;
+        yaw = -90.0f;
+        pitch = 0.0f;
+    }
+
+    float yaw;
+    float pitch;
 
 private:
     float cameraPos_x;
     float cameraPos_y;
     float cameraPos_z;
-    float cameraCenter_x;
-    float cameraCenter_y;
-    float cameraCenter_z;
+    float cameraFront_x;
+    float cameraFront_y;
+    float cameraFront_z;
     float cameraUp_x;
     float cameraUp_y;
     float cameraUp_z;
@@ -85,9 +128,9 @@ public:
     float GetMouseAngleX();
     void SetMouseAngleY(float y);
     float GetMouseAngleY();
-    void SetMousePoseX(float x);
+    void SetMousePoseX(int x);
     float GetMousePoseX();
-    void SetMousePoseY(float y);
+    void SetMousePoseY(int y);
     float GetMousePoseY();
     void SetMouseLeftDown(bool state);
     bool IsMouseLeftDown();

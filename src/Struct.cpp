@@ -2,12 +2,21 @@
 // Created by root on 2020/9/25.
 //
 #include <GL/gl.h>
+#include <iostream>
 #include "Struct.h"
 void Triangle::SetVertex(
     Eigen::Vector3d v1, Eigen::Vector3d v2, Eigen::Vector3d v3) {
     m_v1 = v1;
     m_v3 = v3;
     m_v2 = v2;
+}
+
+int Scene::GetSceneHeight() {
+    return m_height;
+}
+
+int Scene::GetSceneWidth() {
+    return m_width;
 }
 
 void Object::MoveObject(float offset, int axies) {
@@ -40,6 +49,59 @@ void Object::SetIndexList(GLint index_list[12][2]) {
             m_index_list[i][j] = index_list[i][j];
         }
     }
+}
+
+void Object::SetChangePlaneOffset(float offset) {
+    changePlaneOffset = offset;
+}
+
+float Object::GetChangePlaneOffset() {
+    return changePlaneOffset;
+}
+
+void Object::ChangePlane(size_t planeNumber, float offset) {
+    int axies = -1;
+    if (planeNumber == 0 || planeNumber == 1) {
+        axies = 2;
+        if (planeNumber == 0) {
+            m_vertex_list[4][axies] += offset;
+            m_vertex_list[5][axies] += offset;
+            m_vertex_list[6][axies] += offset;
+            m_vertex_list[7][axies] += offset;
+        } else {
+            m_vertex_list[0][axies] -= offset;
+            m_vertex_list[1][axies] -= offset;
+            m_vertex_list[2][axies] -= offset;
+            m_vertex_list[3][axies] -= offset;
+        }
+    } else if (planeNumber == 2 || planeNumber == 3) {
+        axies = 0;
+        if (planeNumber == 2) {
+            m_vertex_list[2][axies] -= offset;
+            m_vertex_list[6][axies] -= offset;
+            m_vertex_list[4][axies] -= offset;
+            m_vertex_list[0][axies] -= offset;
+        } else {
+            m_vertex_list[3][axies] += offset;
+            m_vertex_list[7][axies] += offset;
+            m_vertex_list[5][axies] += offset;
+            m_vertex_list[1][axies] += offset;
+        }
+    } else {
+        axies = 1;
+        if (planeNumber == 4) {
+            m_vertex_list[2][axies] += offset;
+            m_vertex_list[3][axies] += offset;
+            m_vertex_list[6][axies] += offset;
+            m_vertex_list[7][axies] += offset;
+        } else {
+            m_vertex_list[0][axies] -= offset;
+            m_vertex_list[1][axies] -= offset;
+            m_vertex_list[4][axies] -= offset;
+            m_vertex_list[5][axies] -= offset;
+        }
+    }
+    SetAllTriangles();
 }
 
 void Object::SetAllTriangles() {
@@ -172,16 +234,28 @@ std::vector<Eigen::Vector3d> Triangle::GetVertex() {
     return {m_v1, m_v2, m_v3};
 }
 
+void Camera::SetCamPos(float x, float y, float z) {
+    cameraPos_x = x;
+    cameraPos_y = y;
+    cameraPos_z = z;
+}
+
+void Camera::SetCamFront(float x, float y, float z) {
+    cameraFront_x = x;
+    cameraFront_y = y;
+    cameraFront_z = z;
+}
+
 void Camera::SetCameraParams(
-    float pos_x, float pos_y, float pos_z, float center_x, float center_y,
-    float center_z, float up_x, float up_y, float up_z) {
+    float pos_x, float pos_y, float pos_z, float front_x, float front_y,
+    float front_z, float up_x, float up_y, float up_z) {
     cameraPos_x = pos_x;
     cameraPos_y = pos_y;
     cameraPos_z = pos_z;
 
-    cameraCenter_x = center_x;
-    cameraCenter_y = center_y;
-    cameraCenter_z = center_z;
+    cameraFront_x = front_x;
+    cameraFront_y = front_y;
+    cameraFront_z = front_z;
 
     cameraUp_x = up_x;
     cameraUp_y = up_y;
@@ -192,15 +266,15 @@ Eigen::Vector3d Camera::GetCamPos() {
     return Eigen::Vector3d(cameraPos_x, cameraPos_y, cameraPos_z);
 }
 
-Eigen::Vector3d Camera::GetCamCenter() {
-    return Eigen::Vector3d(cameraCenter_x, cameraCenter_y, cameraCenter_z);
+Eigen::Vector3d Camera::GetCamFront() {
+    return Eigen::Vector3d(cameraFront_x, cameraFront_y, cameraFront_z);
 }
 
 Eigen::Vector3d Camera::GetCamUp() {
     return Eigen::Vector3d(cameraUp_x, cameraUp_y, cameraUp_z);
 }
 
-void MouseState::SetMousePoseX(float x) {
+void MouseState::SetMousePoseX(int x) {
     mousepos_x = x;
 }
 
@@ -208,7 +282,7 @@ float MouseState::GetMousePoseX() {
     return mousepos_x;
 }
 
-void MouseState::SetMousePoseY(float y) {
+void MouseState::SetMousePoseY(int y) {
     mousepos_y = y;
 }
 

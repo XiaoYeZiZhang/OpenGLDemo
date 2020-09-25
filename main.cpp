@@ -11,8 +11,9 @@ Eigen::Vector3d GetRay(
     const Eigen::Matrix4d &transformationMatrix,
     const Eigen::Matrix4d &projectionMatrix);
 Object boundingbox;
-Camera camera;
+Camera camera(0.0, 0.0, 5, 0, 0, -5, 0, 1, 0);
 MouseState mouseState;
+Scene scene(800, 800);
 
 void mouseCB(int button, int state, int x, int y) {
     mouseState.SetMousePoseX(x);
@@ -44,16 +45,76 @@ void mouseCB(int button, int state, int x, int y) {
     }
 }
 
+void SpecialKey(GLint key, GLint x, GLint y) {
+    float speed = 0.2;
+    if (key == GLUT_KEY_UP) {
+        camera.SetCamPos(
+            camera.GetCamPos()[0] + camera.GetCamFront()[0] * speed,
+            camera.GetCamPos()[1] + camera.GetCamFront()[1] * speed,
+            camera.GetCamPos()[2] + camera.GetCamFront()[2] * speed);
+    }
+    if (key == GLUT_KEY_DOWN) {
+        camera.SetCamPos(
+            camera.GetCamPos()[0] - camera.GetCamFront()[0] * speed,
+            camera.GetCamPos()[1] - camera.GetCamFront()[1] * speed,
+            camera.GetCamPos()[2] - camera.GetCamFront()[2] * speed);
+    }
+    if (key == GLUT_KEY_LEFT) {
+        camera.SetCamPos(
+            camera.GetCamPos()[0] -
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[0] *
+                    speed,
+            camera.GetCamPos()[1] -
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[1] *
+                    speed,
+            camera.GetCamPos()[2] -
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[2] *
+                    speed);
+    }
+    if (key == GLUT_KEY_RIGHT) {
+        camera.SetCamPos(
+            camera.GetCamPos()[0] +
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[0] *
+                    speed,
+            camera.GetCamPos()[1] +
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[1] *
+                    speed,
+            camera.GetCamPos()[2] +
+                camera.GetCamFront().cross(camera.GetCamUp()).normalized()[2] *
+                    speed);
+    }
+    glutPostRedisplay();
+}
+
 void mouseMotionCB(int x, int y) {
     if (mouseState.IsMouseLeftDown()) {
-        mouseState.SetMouseAngleX(
-            mouseState.GetMouseAngleX() + (x - mouseState.GetMousePoseX()));
-        mouseState.SetMouseAngleY(
-            mouseState.GetMouseAngleY() + (y - mouseState.GetMousePoseY()));
+        float xoffset = (x - mouseState.GetMousePoseX());
+        float yoffset = (y - mouseState.GetMousePoseY());
+
         mouseState.SetMousePoseX(x);
         mouseState.SetMousePoseY(y);
+
+        float sensitivity = 0.001f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        camera.yaw += xoffset;
+        camera.pitch += yoffset;
+
+        if (camera.pitch > 89.0f)
+            camera.pitch = 89.0f;
+        if (camera.pitch < -89.0f)
+            camera.pitch = -89.0f;
+
+        float x = cos(camera.yaw) * cos(camera.pitch);
+        float y = sin(camera.pitch);
+        float z = sin(camera.yaw) * cos(camera.pitch);
+
+        Eigen::Vector3d CameraFront = Eigen::Vector3d(x, y, z).normalized();
+        camera.SetCamFront(CameraFront[0], CameraFront[1], CameraFront[2]);
     }
-    if (mouseState.IsMouseLeftDown()) {
+
+    if (mouseState.IsMouseRightDown()) {
         mouseState.SetMousePoseY(y);
         mouseState.SetMousePoseX(x);
     }
@@ -70,39 +131,59 @@ void KeyBoards(unsigned char key, int x, int y) {
     switch (key) {
     case 'w':
         boundingbox.MoveObject(0.03, 1);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
     case 'a':
         boundingbox.MoveObject(-0.03, 0);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
     case 's':
         boundingbox.MoveObject(-0.03, 1);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
     case 'd':
         boundingbox.MoveObject(0.03, 0);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
     case 'f':
         boundingbox.MoveObject(0.03, 2);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
     case 'b':
         boundingbox.MoveObject(-0.03, 2);
+        boundingbox.SetChangePlaneOffset(0.0);
         glutPostRedisplay();
         break;
+    case '=':
+        std::cout << "+" << std::endl;
+        boundingbox.SetChangePlaneOffset(0.2);
+        break;
+    case '-':
+        boundingbox.SetChangePlaneOffset(-0.2);
+        break;
     default:
+        boundingbox.SetChangePlaneOffset(0.0);
         break;
     case 27:
         exit(0);
-        break;
+    }
+}
+
+void PrintCubeCoords() {
+    for (int i = 0; i < 8; i++) {
+        std::cout << boundingbox.m_vertex_list[i][0] << " "
+                  << boundingbox.m_vertex_list[i][1] << " "
+                  << boundingbox.m_vertex_list[i][2] << std::endl;
     }
 }
 
 void DrawCube(void) {
     int i, j;
-
     glBegin(GL_LINES);
     for (i = 0; i < 12; ++i)
 
@@ -121,15 +202,10 @@ bool IsIntersectWithTriangle(
     const Eigen::Vector3d &orig, const Eigen::Vector3d &dir,
     Eigen::Vector3d &v0, Eigen::Vector3d &v1, Eigen::Vector3d &v2, float &t,
     float &u, float &v) {
-    // E1
     Eigen::Vector3d E1 = v1 - v0;
-    // E2
     Eigen::Vector3d E2 = v2 - v0;
-    // P
     Eigen::Vector3d P = dir.cross(E2);
-    // determinant
     float det = E1.dot(P);
-    // keep det > 0, modify T accordingly
     Eigen::Vector3d T;
     if (det > 0) {
         T = orig - v0;
@@ -137,20 +213,15 @@ bool IsIntersectWithTriangle(
         T = v0 - orig;
         det = -det;
     }
-    // If determinant is near zero, ray lies in plane of triangle
     if (det < 0.0001f)
         return false;
-    // Calculate u and make sure u <= 1
     u = T.dot(P);
     if (u < 0.0f || u > det)
         return false;
-    // Q
     Eigen::Vector3d Q = T.cross(E1);
-    // Calculate v and make sure u + v <= 1
     v = dir.dot(Q);
     if (v < 0.0f || u + v > det)
         return false;
-    // Calculate t, scale parameters, ray intersects triangle
     t = E2.dot(Q);
     float fInvDet = 1.0f / det;
     t *= fInvDet;
@@ -173,16 +244,17 @@ void renderScene(void) {
 
     Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
 
-    camera.SetCameraParams(0.0, 0.0, 5, 0, 0, 0, 0, 1, 0);
     gluLookAt(
         camera.GetCamPos()[0], camera.GetCamPos()[1], camera.GetCamPos()[2],
-        camera.GetCamCenter()[0], camera.GetCamCenter()[1],
-        camera.GetCamCenter()[2], camera.GetCamUp()[0], camera.GetCamUp()[1],
+        camera.GetCamPos()[0] + camera.GetCamFront()[0],
+        camera.GetCamPos()[1] + camera.GetCamFront()[1],
+        camera.GetCamPos()[2] + camera.GetCamFront()[2], camera.GetCamUp()[0],
+        camera.GetCamUp()[1],
         camera.GetCamUp()[2]); // view matrix
 
     Eigen::Matrix4d projectionMatrix = Eigen::Matrix4d::Identity();
 
-    if (mouseState.IsMouseLeftDown()) {
+    if (mouseState.IsMouseRightDown()) {
         GLfloat view_model[16];
         glGetFloatv(GL_MODELVIEW_MATRIX, view_model);
         GLdouble projection[16];
@@ -223,7 +295,6 @@ void renderScene(void) {
 
         // intersection
         float minDistance = INT_MAX;
-        int minTriangleIndex = -1;
         for (size_t i = 0; i < boundingbox.GetAllTriangles().size(); i++) {
             Triangle thisTriangle = boundingbox.GetAllTriangles()[i];
             float t;
@@ -246,36 +317,49 @@ void renderScene(void) {
                     pow((intersectionPoint(0) - camera.GetCamPos()[0]), 2) +
                     pow((intersectionPoint(1) - camera.GetCamPos()[1]), 2) +
                     pow((intersectionPoint(2) - camera.GetCamPos()[2]), 2);
-                std::cout << "current triangle" << i << std::endl;
                 if (distance < minDistance) {
                     minDistance = distance;
-                    minTriangleIndex = i;
+                    boundingbox.minTriangleIndex = i;
                 }
             }
         }
 
         // draw this intersection plane
-        if (minTriangleIndex != -1) {
-            std::cout << "finally triangle id:" << minTriangleIndex
-                      << std::endl;
+        if (boundingbox.minTriangleIndex != -1) {
+            scene.isChangingPlane = true;
             glBegin(GL_QUADS);
             glColor3f(0.0f, 1.0f, 0.0f);
             glVertex3fv(
-                boundingbox.m_vertex_list
-                    [boundingbox.triangle_plane[minTriangleIndex + 1][0]]);
+                boundingbox
+                    .m_vertex_list[boundingbox.triangle_plane
+                                       [boundingbox.minTriangleIndex + 1][0]]);
             glVertex3fv(
-                boundingbox.m_vertex_list
-                    [boundingbox.triangle_plane[minTriangleIndex + 1][1]]);
+                boundingbox
+                    .m_vertex_list[boundingbox.triangle_plane
+                                       [boundingbox.minTriangleIndex + 1][1]]);
             glVertex3fv(
-                boundingbox.m_vertex_list
-                    [boundingbox.triangle_plane[minTriangleIndex + 1][2]]);
+                boundingbox
+                    .m_vertex_list[boundingbox.triangle_plane
+                                       [boundingbox.minTriangleIndex + 1][2]]);
             glVertex3fv(
-                boundingbox.m_vertex_list
-                    [boundingbox.triangle_plane[minTriangleIndex + 1][3]]);
+                boundingbox
+                    .m_vertex_list[boundingbox.triangle_plane
+                                       [boundingbox.minTriangleIndex + 1][3]]);
             glEnd();
         }
     }
+    if (mouseState.IsMouseLeftDown()) {
+        scene.isChangingPlane = false;
+        boundingbox.minTriangleIndex = -1;
+        boundingbox.SetChangePlaneOffset(0.0);
+    }
 
+    if (scene.isChangingPlane) {
+        float offset = boundingbox.GetChangePlaneOffset();
+        boundingbox.ChangePlane(boundingbox.minTriangleIndex / 2, offset);
+        boundingbox.SetChangePlaneOffset(0.0);
+        //        PrintCubeCoords();
+    }
     glColor3f(0, 0, 1);
     DrawCube();
     glPopMatrix();
@@ -286,8 +370,10 @@ Eigen::Vector3d GetRay(
     const Eigen::Vector3d &camera_position,
     const Eigen::Matrix4d &transformationMatrix,
     const Eigen::Matrix4d &projectionMatrix) {
-    float x = (2.0f * mouseState.GetMousePoseX()) / 800 - 1.0f;
-    float y = 1.0f - (2.0f * mouseState.GetMousePoseY()) / 800;
+    float x =
+        (2.0f * mouseState.GetMousePoseX()) / scene.GetSceneWidth() - 1.0f;
+    float y =
+        1.0f - (2.0f * mouseState.GetMousePoseY()) / scene.GetSceneHeight();
     float z = 1.0f;
     Eigen::Vector3d ray_nds = Eigen::Vector3d(x, y, z);
     Eigen::Vector4d ray_clip =
@@ -321,14 +407,15 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(800, 800);
+    glutInitWindowSize(scene.GetSceneWidth(), scene.GetSceneHeight());
 
     glutCreateWindow("GLDemo");
     glutDisplayFunc(renderScene);
+    glutSpecialFunc(&SpecialKey);
     glutIdleFunc(renderScene);
     glutMouseFunc(mouseCB);
-    glutKeyboardFunc(&KeyBoards); //注册键盘事件
     glutMotionFunc(mouseMotionCB);
+    glutKeyboardFunc(&KeyBoards); //注册键盘事件
     glutMainLoop();
     return 0;
 }
